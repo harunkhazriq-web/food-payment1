@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+```
+<title>Food Payment</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 30px 15px;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+    }
+
+    .payment-box {
+        max-width: 420px;
+        margin: auto;
+        background: white;
+        padding: 30px 20px;
+        border-radius: 18px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    h1 {
+        margin-top: 0;
+    }
+
+    .qr {
+        width: 260px;
+        max-width: 100%;
+        margin: 15px auto;
+        display: block;
+        border-radius: 10px;
+    }
+
+    .info {
+        background: #f8f8f8;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+    }
+
+    input[type="file"] {
+        width: 100%;
+        margin-top: 15px;
+        padding: 10px;
+    }
+
+    .preview {
+        display: none;
+        margin-top: 15px;
+    }
+
+    .preview img {
+        width: 100%;
+        max-width: 250px;
+        border-radius: 10px;
+    }
+
+    button {
+        width: 100%;
+        margin-top: 20px;
+        padding: 16px;
+        border: none;
+        border-radius: 10px;
+        background: #008000;
+        color: white;
+        font-size: 17px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    button:disabled {
+        background: #999;
+        cursor: not-allowed;
+    }
+
+    #status {
+        margin-top: 15px;
+        font-weight: bold;
+    }
+</style>
+```
+
+</head>
+
+<body>
+
+<div class="payment-box">
+
+```
+<h1>💳 Food Payment</h1>
+
+<p>Sila buat pembayaran menggunakan QR di bawah.</p>
+
+<!-- QR -->
+<img src="qr.jpeg" class="qr" alt="QR Payment">
+
+<div class="info">
+    <b>Selepas pembayaran:</b>
+    <br><br>
+    Pilih resit pembayaran anda di bawah.
+</div>
+
+<!-- FILE -->
+<input
+    type="file"
+    id="receipt"
+    accept="image/*,.pdf"
+    onchange="previewReceipt()"
+>
+
+<!-- PREVIEW -->
+<div class="preview" id="preview">
+
+    <p>🧾 <b>Preview Resit</b></p>
+
+    <img id="receiptImage" alt="Receipt Preview">
+
+</div>
+
+<!-- UPLOAD -->
+<button id="uploadButton" onclick="uploadReceipt()">
+    📤 UPLOAD RESIT
+</button>
+
+<div id="status"></div>
+```
+
+</div>
+
+<script>
+
+const SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbzsLAIR1M7JYGNjgNTnjXQ2H_ofHJmDpdhPxq7mA27BPmDdyRMsjaYuRn4NtbgTzsgVCw/exec";
+
+
+function previewReceipt() {
+
+    const input = document.getElementById("receipt");
+    const preview = document.getElementById("preview");
+    const image = document.getElementById("receiptImage");
+    const status = document.getElementById("status");
+
+    if (input.files.length === 0) {
+
+        preview.style.display = "none";
+        status.innerHTML = "";
+
+        return;
+    }
+
+    const file = input.files[0];
+
+    status.style.color = "green";
+
+    status.innerHTML =
+        "✅ Resit dipilih: " + file.name;
+
+
+    if (file.type.startsWith("image/")) {
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+
+            image.src = e.target.result;
+
+            preview.style.display = "block";
+
+        };
+
+        reader.readAsDataURL(file);
+
+    } else {
+
+        preview.style.display = "none";
+
+    }
+
+}
+
+
+function uploadReceipt() {
+
+    const input = document.getElementById("receipt");
+    const button = document.getElementById("uploadButton");
+    const status = document.getElementById("status");
+
+    if (input.files.length === 0) {
+
+        status.style.color = "red";
+
+        status.innerHTML =
+            "❌ Sila pilih resit dahulu.";
+
+        return;
+    }
+
+
+    const file = input.files[0];
+
+    button.disabled = true;
+
+    button.innerHTML =
+        "⏳ Sedang upload...";
+
+    status.style.color = "black";
+
+    status.innerHTML =
+        "⏳ Sila tunggu, resit sedang dihantar...";
+
+
+    const reader = new FileReader();
+
+
+    reader.onload = function(e) {
+
+        const base64 =
+            e.target.result.split(",")[1];
+
+
+        const data = {
+
+            fileName: file.name,
+
+            mimeType: file.type,
+
+            file: base64
+
+        };
+
+
+        fetch(SCRIPT_URL, {
+
+            method: "POST",
+
+            body: JSON.stringify(data)
+
+        })
+
+        .then(response => response.json())
+
+        .then(result => {
+
+            if (result.success) {
+
+                status.style.color = "green";
+
+                status.innerHTML =
+                    "✅ Resit berjaya disimpan!<br><br>" +
+                    "Nama fail: " +
+                    result.fileName;
+
+                button.innerHTML =
+                    "✅ BERJAYA UPLOAD";
+
+            } else {
+
+                throw new Error(result.error);
+
+            }
+
+        })
+
+        .catch(error => {
+
+            console.error(error);
+
+            status.style.color = "red";
+
+            status.innerHTML =
+                "❌ Upload gagal.<br>" +
+                error;
+
+            button.disabled = false;
+
+            button.innerHTML =
+                "📤 UPLOAD RESIT";
+
+        });
+
+    };
+
+
+    reader.readAsDataURL(file);
+
+}
+
+</script>
+
+</body>
+</html>
